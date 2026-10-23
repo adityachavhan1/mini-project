@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ImageGuard – Digital Image Forensics Tool</title>
+    <link rel="stylesheet" href="/style.css" />
+    <meta property="og:image" content="https://bolt.new/static/og_default.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://bolt.new/static/og_default.png">
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="logo">
+          <svg class="logo-icon" viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+          <div class="logo-text">
+            <h1>ImageGuard</h1>
+            <span class="tagline">Digital Image Forensics Tool</span>
+          </div>
+        </div>
+        <p class="header-sub">Analyze image metadata, generate SHA-256 integrity hashes, and compare files — all locally in your browser.</p>
+      </div>
+    </header>
+
+    <main class="container">
+      <!-- Disclaimer banner -->
+      <div class="disclaimer" role="note">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+        <p><strong>Disclaimer:</strong> Metadata and cryptographic hashes alone cannot conclusively establish whether an image is authentic or has been manipulated. They are supporting indicators only, not proof of integrity.</p>
+      </div>
+
+      <!-- Upload section -->
+      <section class="card upload-section">
+        <h2 class="section-title">1. Upload Image</h2>
+        <p class="section-desc">Supported formats: JPG, JPEG, PNG. Files are processed entirely in your browser and never uploaded to any server.</p>
+
+        <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Click or drag an image to upload">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <p class="drop-text">Drag &amp; drop an image here, or click to browse</p>
+          <p class="drop-sub">JPG · JPEG · PNG</p>
+          <input type="file" id="fileInput" accept="image/jpeg,image/png,.jpg,.jpeg,.png" hidden />
+        </div>
+
+        <div id="uploadError" class="error-msg" hidden></div>
+      </section>
+
+      <!-- Image details section -->
+      <section id="detailsSection" class="card details-section" hidden>
+        <h2 class="section-title">2. Image Details</h2>
+
+        <div class="details-grid">
+          <div class="preview-wrap">
+            <img id="preview" class="preview-img" alt="Uploaded image preview" />
+          </div>
+          <div class="info-panel">
+            <div class="info-row"><span class="info-label">Filename</span><span id="fileName" class="info-value"></span></div>
+            <div class="info-row"><span class="info-label">File Size</span><span id="fileSize" class="info-value"></span></div>
+            <div class="info-row"><span class="info-label">Format</span><span id="fileFormat" class="info-value"></span></div>
+            <div class="info-row"><span class="info-label">Dimensions</span><span id="fileDimensions" class="info-value"></span></div>
+          </div>
+        </div>
+
+        <div class="hash-block">
+          <div class="hash-header">
+            <span class="info-label">SHA-256 Hash</span>
+            <button id="copyHashBtn" class="btn-small" type="button">Copy</button>
+          </div>
+          <code id="hashValue" class="hash-value"></code>
+        </div>
+      </section>
+
+      <!-- ELA section -->
+      <section id="elaSection" class="card ela-section" hidden>
+        <h2 class="section-title">3. Error Level Analysis (ELA)</h2>
+        <p class="section-desc">Error Level Analysis recompresses a JPEG image at a known quality level and compares the result to the original. Brighter areas in the visualization indicate regions that responded differently to recompression, which <em>may</em> suggest editing — though many factors can cause this.</p>
+        <button id="elaBtn" class="btn-primary" type="button">Analyze Image (ELA)</button>
+        <div id="elaError" class="error-msg" hidden></div>
+        <div id="elaResult" class="ela-result" hidden>
+          <div class="ela-grid">
+            <div class="ela-slot">
+              <h3 class="slot-label">Original Image</h3>
+              <div class="ela-canvas-wrap"><img id="elaOriginal" alt="Original image for ELA" /></div>
+            </div>
+            <div class="ela-slot">
+              <h3 class="slot-label">ELA Visualization</h3>
+              <div class="ela-canvas-wrap"><canvas id="elaCanvas"></canvas></div>
+            </div>
+          </div>
+          <div class="ela-explanation">
+            <h4>How to read this</h4>
+            <p>Brighter (whiter) areas in the ELA visualization represent higher error levels — those regions reacted differently when the image was recompressed. Uniformly textured areas (like sky or flat surfaces) typically appear dark and consistent. Edited or pasted regions <em>may</em> appear brighter or show different patterns than surrounding areas.</p>
+            <div class="ela-disclaimer">
+              <strong>Important:</strong> ELA highlights compression differences and cannot conclusively prove image manipulation. Many legitimate factors — compression history, image content, resaving — can produce similar patterns. This is an investigative aid, not definitive evidence.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Metadata section -->
+      <section id="metadataSection" class="card metadata-section" hidden>
+        <h2 class="section-title">4. EXIF Metadata</h2>
+        <div id="metadataContent"></div>
+      </section>
+
+      <!-- Comparison section -->
+      <section class="card compare-section">
+        <h2 class="section-title">5. Compare Two Images</h2>
+        <p class="section-desc">Upload two images to compare their SHA-256 hashes and determine if their file contents are identical.</p>
+
+        <div class="compare-grid">
+          <div class="compare-slot">
+            <h3 class="slot-label">Image A</h3>
+            <div id="dropZoneA" class="drop-zone small" tabindex="0" role="button" aria-label="Upload first image for comparison">
+              <p class="drop-text">Click or drop image</p>
+              <input type="file" id="fileInputA" accept="image/jpeg,image/png,.jpg,.jpeg,.png" hidden />
+            </div>
+            <div id="previewA" class="compare-preview" hidden></div>
+            <code id="hashA" class="hash-value small"></code>
+          </div>
+          <div class="compare-vs">
+            <span class="vs-badge">VS</span>
+          </div>
+          <div class="compare-slot">
+            <h3 class="slot-label">Image B</h3>
+            <div id="dropZoneB" class="drop-zone small" tabindex="0" role="button" aria-label="Upload second image for comparison">
+              <p class="drop-text">Click or drop image</p>
+              <input type="file" id="fileInputB" accept="image/jpeg,image/png,.jpg,.jpeg,.png" hidden />
+            </div>
+            <div id="previewB" class="compare-preview" hidden></div>
+            <code id="hashB" class="hash-value small"></code>
+          </div>
+        </div>
+
+        <div id="compareError" class="error-msg" hidden></div>
+        <div id="compareResult" class="compare-result" hidden></div>
+      </section>
+
+      <!-- Report section -->
+      <section id="reportSection" class="card report-section" hidden>
+        <h2 class="section-title">6. Download Analysis Report</h2>
+        <p class="section-desc">Generate a TXT file containing the image details, SHA-256 hash, available metadata, and an analysis timestamp.</p>
+        <button id="downloadReportBtn" class="btn-primary" type="button">Download TXT Report</button>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>ImageGuard &middot; Educational mini-project &middot; All processing happens locally in your browser</p>
+    </footer>
+
+    <script type="module" src="/script.js"></script>
+  </body>
+</html>
